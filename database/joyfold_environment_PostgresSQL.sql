@@ -1,4 +1,3 @@
-
 CREATE DATABASE joyfold WITH ENCODING = 'UTF8' LC_COLLATE = 'es_ES.UTF-8'  LC_CTYPE = 'es_ES.UTF-8' TEMPLATE = template0;
 
 CREATE ROLE joyfold WITH LOGIN PASSWORD 'lambda73';
@@ -44,11 +43,68 @@ CREATE TABLE IF NOT EXISTS auth.user(
 
 );
 
+CREATE TABLE IF NOT EXISTS auth.token(--refresh_token
+
+	id VARCHAR(64),
+	user_id VARCHAR(64) NOT NULL,
+	uuid VARCHAR(36) DEFAULT NULL, --explorer id/session id
+	access_token VARCHAR DEFAULT NULL,
+	state BOOLEAN NOT NULL DEFAULT TRUE,
+	expiresat TIMESTAMP NOT NULL DEFAULT (CURRENT_TIMESTAMP + INTERVAL '2 months'),
+	createdat TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	updatedat TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	PRIMARY KEY (id),
+	FOREIGN KEY (user_id) REFERENCES auth.user(id) ON UPDATE CASCADE ON DELETE CASCADE
+
+);
+
+CREATE OR REPLACE FUNCTION auth.table_id() RETURNS TRIGGER AS $$
+
+	BEGIN
+
+		NEW.id = auth.id();
+		RETURN NEW;
+
+	END;
+
+$$ LANGUAGE plpgsql;
+
 CREATE OR REPLACE FUNCTION auth.credential_id() RETURNS TRIGGER AS $$
 
 	BEGIN
 
 		NEW.id = auth.id(ARRAY[NEW.email]::VARCHAR[]);
+		RETURN NEW;
+
+	END;
+
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION auth.token_id() RETURNS TRIGGER AS $$
+
+	BEGIN
+
+		NEW.id = auth.id(ARRAY[NEW.user_id]::VARCHAR[], 64, 64);
+		RETURN NEW;
+
+	END;
+
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION auth.unique_token_uuid() RETURNS TRIGGER AS $$
+
+	BEGIN
+
+		IF NEW.uuid IS NOT NULL THEN
+
+			UPDATE auth.token SET
+
+				state = FALSE
+
+			WHERE uuid = NEW.uuid;
+
+		END IF;
+
 		RETURN NEW;
 
 	END;
@@ -97,19 +153,19 @@ CREATE OR REPLACE FUNCTION auth.verify_password(plain_password VARCHAR, hashed_p
 
 $$ LANGUAGE plpgsql IMMUTABLE;
 
-CREATE OR REPLACE FUNCTION auth.authenticate(email_param VARCHAR, password_param VARCHAR) RETURNS BOOLEAN AS $$
+CREATE OR REPLACE FUNCTION auth.authorize(access_token_param VARCHAR) RETURNS BOOLEAN AS $$
 
 	BEGIN
 
-		RETURN (SELECT auth.verify_password(password_param, (SELECT
+		RETURN EXISTS(
 
-			cred.password
+			SELECT t.id FROM
 
-		FROM
+				auth.token AS t
 
-			auth.credential AS cred
+			WHERE access_token = access_token_param AND t.state = TRUE
 
-		WHERE cred.email = email_param)));
+		);
 
 	END;
 
@@ -169,19 +225,111 @@ CREATE OR REPLACE FUNCTION auth.id(
 
 $$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE TRIGGER invoke_table_id_auth_credential BEFORE INSERT ON auth.credential
+CREATE OR REPLACE FUNCTION auth.authenticate(email_param VARCHAR, password_param VARCHAR) RETURNS TABLE (
+
+	id VARCHAR,
+	name VARCHAR,
+	picture VARCHAR,
+	admin BOOLEAN,
+	state BOOLEAN,
+	"createdAt" TIMESTAMP,
+	"updatedAt" TIMESTAMP
+
+) AS $$
+
+	BEGIN
+
+		RETURN QUERY
+
+		SELECT
+
+			u.id AS id,
+			u.name AS name,
+			u.picture AS picture,
+			u.admin AS admin,
+			u.state AS state,
+			u.createdat AS "createdAt",
+			u.updatedat AS "updatedAt"
+
+		FROM
+
+			auth.credential AS cred
+
+		JOIN auth.user AS u ON
+
+			u.id = cred.id AND u.state = TRUE
+
+		WHERE cred.email = email_param AND auth.verify_password(password_param, cred.password) = TRUE;
+
+	END;
+
+$$ LANGUAGE plpgsql IMMUTABLE;
+
+CREATE OR REPLACE FUNCTION auth.authenticate_by_token(token VARCHAR) RETURNS TABLE (
+
+	id VARCHAR,
+	name VARCHAR,
+	picture VARCHAR,
+	admin BOOLEAN,
+	state BOOLEAN,
+	"createdAt" TIMESTAMP,
+	"updatedAt" TIMESTAMP
+
+) AS $$
+
+	BEGIN
+
+		RETURN QUERY
+
+		SELECT
+
+			u.id AS id,
+			u.name AS name,
+			u.picture AS picture,
+			u.admin AS admin,
+			u.state AS state,
+			u.createdat AS "createdAt",
+			u.updatedat AS "updatedAt"
+
+		FROM
+
+			auth.user AS u
+
+		JOIN auth.token AS t ON 
+
+			u.id = t.user_id AND t.state = TRUE
+
+		WHERE u.state = TRUE AND t.id = token;
+
+	END;
+
+$$ LANGUAGE plpgsql IMMUTABLE;
+
+CREATE OR REPLACE TRIGGER invoke_credential_id BEFORE INSERT ON auth.credential
 
 	FOR EACH ROW EXECUTE FUNCTION auth.credential_id();
+
+CREATE OR REPLACE TRIGGER invoke_token_id BEFORE INSERT ON auth.token
+
+	FOR EACH ROW EXECUTE FUNCTION auth.token_id();
 
 CREATE OR REPLACE TRIGGER invoke_credential_bcrypt_password_hash BEFORE INSERT OR UPDATE OF password ON auth.credential
 
 	FOR EACH ROW EXECUTE FUNCTION auth.credential_bcrypt_password_hash();
+
+CREATE OR REPLACE TRIGGER invoke_unique_token_uuid BEFORE INSERT ON auth.token
+
+	FOR EACH ROW EXECUTE FUNCTION auth.unique_token_uuid();
 
 CREATE OR REPLACE TRIGGER invoke_update_updatedat_auth_credential BEFORE UPDATE ON auth.credential
 
 	FOR EACH ROW EXECUTE FUNCTION auth.update_updatedat();
 
 CREATE OR REPLACE TRIGGER invoke_update_updatedat_auth_user BEFORE UPDATE ON auth.user
+
+	FOR EACH ROW EXECUTE FUNCTION auth.update_updatedat();
+
+CREATE OR REPLACE TRIGGER invoke_update_updatedat_auth_token BEFORE UPDATE ON auth.token
 
 	FOR EACH ROW EXECUTE FUNCTION auth.update_updatedat();
 
@@ -267,6 +415,160 @@ CREATE OR REPLACE PROCEDURE auth.create_account(
 		WHEN OTHERS THEN ROLLBACK;
 
 		RAISE;
+
+	END;
+
+$$;
+
+CREATE OR REPLACE PROCEDURE auth.create_token(
+
+	email_param VARCHAR,
+	password_param VARCHAR,
+	access_token_param VARCHAR,
+	uuid_param VARCHAR DEFAULT NULL,
+	INOUT token VARCHAR DEFAULT NULL
+
+) LANGUAGE plpgsql AS $$
+
+	BEGIN
+
+		INSERT INTO auth.token(
+
+			user_id, uuid, access_token
+
+		) SELECT
+
+			u.id, uuid_param, access_token_param
+
+		FROM
+
+			auth.authenticate(email_param, password_param) AS u
+
+		RETURNING id INTO token;
+
+	EXCEPTION
+
+		WHEN OTHERS THEN ROLLBACK;
+
+		RAISE;
+
+	END;
+
+$$;
+
+CREATE OR REPLACE PROCEDURE auth.refresh_token(
+
+	token_id_param VARCHAR, access_token_param VARCHAR, uuid_param VARCHAR, INOUT token VARCHAR DEFAULT NULL
+
+) LANGUAGE plpgsql AS $$
+
+	BEGIN
+
+		IF (uuid_param IS NULL OR NOT EXISTS(
+
+			SELECT * FROM auth.token WHERE uuid = uuid_param
+
+		)) THEN
+
+			RAISE EXCEPTION 'Invalid uuid.';
+
+		END IF;
+
+		INSERT INTO auth.token(
+
+			user_id, uuid, access_token
+
+		) SELECT
+
+			t.user_id, t.uuid, access_token_param
+
+		FROM
+
+			auth.token AS t
+
+		WHERE
+
+			t.id = token_id_param AND t.uuid = uuid_param
+
+		RETURNING id INTO token;
+
+		UPDATE auth.token SET
+
+			state = FALSE
+
+		WHERE id = token_id_param;
+
+	EXCEPTION
+
+		WHEN OTHERS THEN ROLLBACK;
+
+		RAISE;
+
+	END;
+
+$$;
+
+CREATE OR REPLACE PROCEDURE auth.revoke_token(
+
+	access_token_param VARCHAR, single_or_every BOOLEAN DEFAULT FALSE
+
+) LANGUAGE plpgsql AS $$
+
+	BEGIN
+
+		IF (access_token_param IS NULL OR NOT EXISTS(
+
+			SELECT * FROM auth.token WHERE access_token = access_token_param
+
+		)) THEN
+
+			RAISE EXCEPTION 'Invalid token.';
+
+		END IF;
+
+		IF single_or_every THEN
+
+			UPDATE auth.token SET
+
+				state = FALSE
+
+			WHERE user_id IN (
+
+				SELECT t.user_id FROM auth.token AS t WHERE access_token = access_token_param
+
+			);
+
+		ELSE
+
+			UPDATE auth.token SET
+
+				state = FALSE
+
+			WHERE access_token = access_token_param;
+
+		END IF;
+
+	EXCEPTION
+
+		WHEN OTHERS THEN ROLLBACK;
+
+		RAISE;
+
+	END;
+
+$$;
+
+CREATE OR REPLACE PROCEDURE auth.invalidate_expired_tokens() LANGUAGE plpgsql AS $$
+
+	BEGIN
+
+		UPDATE auth.token SET
+
+			state = FALSE
+
+		WHERE expiresat < CURRENT_TIMESTAMP AND state = TRUE;
+		
+		COMMIT;
 
 	END;
 

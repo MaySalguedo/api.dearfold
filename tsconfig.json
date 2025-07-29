@@ -3,7 +3,12 @@
 
 		"paths": {
 
-			"@core/*": ["src/core/*"]
+			"@core/*": ["src/core/*"],
+			"@models/*": ["src/common/models/*"],
+			"@repo-types/*": ["src/common/types/*"],
+			"@exceptions/*": ["src/common/exceptions/*"],
+			"@auth/*": ["src/endpoints/auth/*"],
+			"@user/*": ["src/endpoints/user/*"]
 
 		}, "module": "commonjs",
 		"declaration": true,

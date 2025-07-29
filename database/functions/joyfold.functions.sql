@@ -1,10 +1,52 @@
 \c joyfold;
 
+CREATE OR REPLACE FUNCTION auth.table_id() RETURNS TRIGGER AS $$
+
+	BEGIN
+
+		NEW.id = auth.id();
+		RETURN NEW;
+
+	END;
+
+$$ LANGUAGE plpgsql;
+
 CREATE OR REPLACE FUNCTION auth.credential_id() RETURNS TRIGGER AS $$
 
 	BEGIN
 
 		NEW.id = auth.id(ARRAY[NEW.email]::VARCHAR[]);
+		RETURN NEW;
+
+	END;
+
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION auth.token_id() RETURNS TRIGGER AS $$
+
+	BEGIN
+
+		NEW.id = auth.id(ARRAY[NEW.user_id]::VARCHAR[], 64, 64);
+		RETURN NEW;
+
+	END;
+
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION auth.unique_token_uuid() RETURNS TRIGGER AS $$
+
+	BEGIN
+
+		IF NEW.uuid IS NOT NULL THEN
+
+			UPDATE auth.token SET
+
+				state = FALSE
+
+			WHERE uuid = NEW.uuid;
+
+		END IF;
+
 		RETURN NEW;
 
 	END;
@@ -53,19 +95,19 @@ CREATE OR REPLACE FUNCTION auth.verify_password(plain_password VARCHAR, hashed_p
 
 $$ LANGUAGE plpgsql IMMUTABLE;
 
-CREATE OR REPLACE FUNCTION auth.authenticate(email_param VARCHAR, password_param VARCHAR) RETURNS BOOLEAN AS $$
+CREATE OR REPLACE FUNCTION auth.authorize(access_token_param VARCHAR) RETURNS BOOLEAN AS $$
 
 	BEGIN
 
-		RETURN (SELECT auth.verify_password(password_param, (SELECT
+		RETURN EXISTS(
 
-			cred.password
+			SELECT t.id FROM
 
-		FROM
+				auth.token AS t
 
-			auth.credential AS cred
+			WHERE access_token = access_token_param AND t.state = TRUE
 
-		WHERE cred.email = email_param)));
+		);
 
 	END;
 
@@ -124,3 +166,83 @@ CREATE OR REPLACE FUNCTION auth.id(
 	END;
 
 $$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION auth.authenticate(email_param VARCHAR, password_param VARCHAR) RETURNS TABLE (
+
+	id VARCHAR,
+	name VARCHAR,
+	picture VARCHAR,
+	admin BOOLEAN,
+	state BOOLEAN,
+	"createdAt" TIMESTAMP,
+	"updatedAt" TIMESTAMP
+
+) AS $$
+
+	BEGIN
+
+		RETURN QUERY
+
+		SELECT
+
+			u.id AS id,
+			u.name AS name,
+			u.picture AS picture,
+			u.admin AS admin,
+			u.state AS state,
+			u.createdat AS "createdAt",
+			u.updatedat AS "updatedAt"
+
+		FROM
+
+			auth.credential AS cred
+
+		JOIN auth.user AS u ON
+
+			u.id = cred.id AND u.state = TRUE
+
+		WHERE cred.email = email_param AND auth.verify_password(password_param, cred.password) = TRUE;
+
+	END;
+
+$$ LANGUAGE plpgsql IMMUTABLE;
+
+CREATE OR REPLACE FUNCTION auth.authenticate_by_token(token VARCHAR) RETURNS TABLE (
+
+	id VARCHAR,
+	name VARCHAR,
+	picture VARCHAR,
+	admin BOOLEAN,
+	state BOOLEAN,
+	"createdAt" TIMESTAMP,
+	"updatedAt" TIMESTAMP
+
+) AS $$
+
+	BEGIN
+
+		RETURN QUERY
+
+		SELECT
+
+			u.id AS id,
+			u.name AS name,
+			u.picture AS picture,
+			u.admin AS admin,
+			u.state AS state,
+			u.createdat AS "createdAt",
+			u.updatedat AS "updatedAt"
+
+		FROM
+
+			auth.user AS u
+
+		JOIN auth.token AS t ON 
+
+			u.id = t.user_id AND t.state = TRUE
+
+		WHERE u.state = TRUE AND t.id = token;
+
+	END;
+
+$$ LANGUAGE plpgsql IMMUTABLE;
