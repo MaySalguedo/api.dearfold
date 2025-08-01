@@ -1,7 +1,8 @@
 import { IsString, IsNotEmpty, IsUrl, IsOptional, IsBoolean, MinLength, MaxLength } from 'class-validator';
+import { User } from '@user/entities/user.entity';
 import { Dto } from '@models/dto.model';
 
-export class CreateUserDto extends Dto {
+export class CreateUserDto extends Dto<User> {
 
 	@IsString() @IsNotEmpty() @MinLength(3, {
 

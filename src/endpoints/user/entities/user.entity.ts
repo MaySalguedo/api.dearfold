@@ -35,6 +35,6 @@ import { Entity as BaseEntity } from '@models/entity.model';
 		nullable: false,
 		default: false
 
-	}) public admin?: boolean;
+	}) public admin?: boolean = false;
 
 }

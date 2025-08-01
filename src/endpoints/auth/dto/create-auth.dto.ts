@@ -1,7 +1,8 @@
 import { IsString, IsNotEmpty, IsEmail, IsUrl, IsOptional, IsBoolean, MinLength, MaxLength, IsNumber } from 'class-validator';
+import { Auth } from '@auth/entities/auth.entity';
 import { Dto } from '@models/dto.model';
 
-export class CreateAuthDto extends Dto {
+export class CreateAuthDto extends Dto<Auth> {
 
 	@IsString() @IsNotEmpty() @MaxLength(100, {
 

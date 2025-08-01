@@ -1,4 +1,4 @@
-\c joyfold;
+\c dearfold;
 
 CREATE OR REPLACE FUNCTION auth.table_id() RETURNS TRIGGER AS $$
 
@@ -95,7 +95,7 @@ CREATE OR REPLACE FUNCTION auth.verify_password(plain_password VARCHAR, hashed_p
 
 $$ LANGUAGE plpgsql IMMUTABLE;
 
-CREATE OR REPLACE FUNCTION auth.authorize(access_token_param VARCHAR) RETURNS BOOLEAN AS $$
+/*CREATE OR REPLACE FUNCTION auth.authorize(access_token_param VARCHAR) RETURNS BOOLEAN AS $$
 
 	BEGIN
 
@@ -111,7 +111,7 @@ CREATE OR REPLACE FUNCTION auth.authorize(access_token_param VARCHAR) RETURNS BO
 
 	END;
 
-$$ LANGUAGE plpgsql IMMUTABLE;
+$$ LANGUAGE plpgsql IMMUTABLE;*/
 
 CREATE OR REPLACE FUNCTION auth.id(
 

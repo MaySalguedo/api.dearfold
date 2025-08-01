@@ -1,22 +1,22 @@
-CREATE DATABASE joyfold WITH ENCODING = 'UTF8' LC_COLLATE = 'es_ES.UTF-8'  LC_CTYPE = 'es_ES.UTF-8' TEMPLATE = template0;
+CREATE DATABASE dearfold WITH ENCODING = 'UTF8' LC_COLLATE = 'es_ES.UTF-8'  LC_CTYPE = 'es_ES.UTF-8' TEMPLATE = template0;
 
-CREATE ROLE joyfold WITH LOGIN PASSWORD 'lambda73';
+CREATE ROLE dearfold WITH LOGIN PASSWORD 'lambda73';
 
-ALTER DATABASE joyfold OWNER TO joyfold;
+ALTER DATABASE dearfold OWNER TO dearfold;
 
-GRANT ALL PRIVILEGES ON DATABASE joyfold TO joyfold;
+GRANT ALL PRIVILEGES ON DATABASE dearfold TO dearfold;
 
-\c joyfold;
+\c dearfold;
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
-CREATE SCHEMA IF NOT EXISTS joyfold AUTHORIZATION joyfold;
-CREATE SCHEMA IF NOT EXISTS auth AUTHORIZATION joyfold;
+CREATE SCHEMA IF NOT EXISTS dearfold AUTHORIZATION dearfold;
+CREATE SCHEMA IF NOT EXISTS auth AUTHORIZATION dearfold;
 
-ALTER DEFAULT PRIVILEGES IN SCHEMA joyfold GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO joyfold;
-ALTER DEFAULT PRIVILEGES IN SCHEMA auth GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO joyfold;
+ALTER DEFAULT PRIVILEGES IN SCHEMA dearfold GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO dearfold;
+ALTER DEFAULT PRIVILEGES IN SCHEMA auth GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO dearfold;
 
-SET ROLE joyfold;
+SET ROLE dearfold;
 
 CREATE TABLE IF NOT EXISTS auth.credential(
 
@@ -48,7 +48,6 @@ CREATE TABLE IF NOT EXISTS auth.token(--refresh_token
 	id VARCHAR(64),
 	user_id VARCHAR(64) NOT NULL,
 	uuid VARCHAR(36) DEFAULT NULL, --explorer id/session id
-	access_token VARCHAR DEFAULT NULL,
 	state BOOLEAN NOT NULL DEFAULT TRUE,
 	expiresat TIMESTAMP NOT NULL DEFAULT (CURRENT_TIMESTAMP + INTERVAL '2 months'),
 	createdat TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -153,7 +152,7 @@ CREATE OR REPLACE FUNCTION auth.verify_password(plain_password VARCHAR, hashed_p
 
 $$ LANGUAGE plpgsql IMMUTABLE;
 
-CREATE OR REPLACE FUNCTION auth.authorize(access_token_param VARCHAR) RETURNS BOOLEAN AS $$
+/*CREATE OR REPLACE FUNCTION auth.authorize(access_token_param VARCHAR) RETURNS BOOLEAN AS $$
 
 	BEGIN
 
@@ -169,7 +168,7 @@ CREATE OR REPLACE FUNCTION auth.authorize(access_token_param VARCHAR) RETURNS BO
 
 	END;
 
-$$ LANGUAGE plpgsql IMMUTABLE;
+$$ LANGUAGE plpgsql IMMUTABLE;*/
 
 CREATE OR REPLACE FUNCTION auth.id(
 
@@ -424,7 +423,6 @@ CREATE OR REPLACE PROCEDURE auth.create_token(
 
 	email_param VARCHAR,
 	password_param VARCHAR,
-	access_token_param VARCHAR,
 	uuid_param VARCHAR DEFAULT NULL,
 	INOUT token VARCHAR DEFAULT NULL
 
@@ -434,11 +432,11 @@ CREATE OR REPLACE PROCEDURE auth.create_token(
 
 		INSERT INTO auth.token(
 
-			user_id, uuid, access_token
+			user_id, uuid
 
 		) SELECT
 
-			u.id, uuid_param, access_token_param
+			u.id, uuid_param
 
 		FROM
 
@@ -458,7 +456,7 @@ $$;
 
 CREATE OR REPLACE PROCEDURE auth.refresh_token(
 
-	token_id_param VARCHAR, access_token_param VARCHAR, uuid_param VARCHAR, INOUT token VARCHAR DEFAULT NULL
+	token_id_param VARCHAR, uuid_param VARCHAR, INOUT token VARCHAR DEFAULT NULL
 
 ) LANGUAGE plpgsql AS $$
 
@@ -476,11 +474,11 @@ CREATE OR REPLACE PROCEDURE auth.refresh_token(
 
 		INSERT INTO auth.token(
 
-			user_id, uuid, access_token
+			user_id, uuid
 
 		) SELECT
 
-			t.user_id, t.uuid, access_token_param
+			t.user_id, t.uuid
 
 		FROM
 
@@ -510,15 +508,15 @@ $$;
 
 CREATE OR REPLACE PROCEDURE auth.revoke_token(
 
-	access_token_param VARCHAR, single_or_every BOOLEAN DEFAULT FALSE
+	token_id_param VARCHAR, single_or_every BOOLEAN DEFAULT FALSE
 
 ) LANGUAGE plpgsql AS $$
 
 	BEGIN
 
-		IF (access_token_param IS NULL OR NOT EXISTS(
+		IF (token_id_param IS NULL OR NOT EXISTS(
 
-			SELECT * FROM auth.token WHERE access_token = access_token_param
+			SELECT * FROM auth.token AS t WHERE t.id = token_id_param
 
 		)) THEN
 
@@ -534,7 +532,7 @@ CREATE OR REPLACE PROCEDURE auth.revoke_token(
 
 			WHERE user_id IN (
 
-				SELECT t.user_id FROM auth.token AS t WHERE access_token = access_token_param
+				SELECT t.user_id FROM auth.token AS t WHERE t.id = token_id_param
 
 			);
 
@@ -544,7 +542,7 @@ CREATE OR REPLACE PROCEDURE auth.revoke_token(
 
 				state = FALSE
 
-			WHERE access_token = access_token_param;
+			WHERE id = token_id_param;
 
 		END IF;
 
@@ -567,8 +565,28 @@ CREATE OR REPLACE PROCEDURE auth.invalidate_expired_tokens() LANGUAGE plpgsql AS
 			state = FALSE
 
 		WHERE expiresat < CURRENT_TIMESTAMP AND state = TRUE;
-		
+
 		COMMIT;
+
+	END;
+
+$$;
+
+CREATE OR REPLACE PROCEDURE auth.deactivate_account(account_id_param VARCHAR) LANGUAGE plpgsql AS $$
+
+	BEGIN
+
+		DELETE FROM auth.credential WHERE id = account_id_param;
+
+		UPDATE auth.user SET
+
+			state = FALSE
+
+		WHERE id = account_id_param;
+
+	EXCEPTION
+
+		WHEN OTHERS THEN RAISE;
 
 	END;
 

@@ -7,6 +7,7 @@
 			"@models/*": ["src/common/models/*"],
 			"@repo-types/*": ["src/common/types/*"],
 			"@exceptions/*": ["src/common/exceptions/*"],
+			"@interfaces/*": ["src/common/interfaces/*"],
 			"@auth/*": ["src/endpoints/auth/*"],
 			"@user/*": ["src/endpoints/user/*"]
 

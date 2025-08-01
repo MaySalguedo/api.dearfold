@@ -13,16 +13,14 @@ import { TokenStrategy } from './strategies/token/token.strategy';
 
 import { AuthGuard } from './guards/auth/auth.guard';
 import { JwtGuard } from './guards/jwt/jwt.guard';
+import { AdminGuard } from './guards/admin/admin.guard';
 import { TokenGuard } from './guards/token/token.guard';
 
 @Module({
 
 	imports: [
 
-		TypeOrmModule.forRoot(databaseConfig),
-		AuthModule,
-		PassportModule,
-		JwtModule.register({
+		TypeOrmModule.forRoot(databaseConfig), AuthModule, PassportModule, JwtModule.register({
 
 			secret: process.env.JWT_SECRET,
 			signOptions: { expiresIn: '4h' }
@@ -31,7 +29,7 @@ import { TokenGuard } from './guards/token/token.guard';
 
 	], providers: [
 
-		AuthStrategy, JwtStrategy, AuthGuard, JwtGuard, TokenStrategy, TokenGuard
+		AuthStrategy, JwtStrategy, AuthGuard, JwtGuard, AdminGuard, TokenStrategy, TokenGuard
 
 	], exports: []
 

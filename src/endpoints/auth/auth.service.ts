@@ -1,20 +1,24 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { CreateUserDto } from '@user/dto/create-user.dto';
 import { CreateAuthDto } from './dto/create-auth.dto';
 import { UpdateAuthDto } from './dto/update-auth.dto';
+import { IAuth } from './interfaces/auth.interface';
 import { Auth } from './entities/auth.entity';
 import { User } from '@user/entities/user.entity';
 import { ProcedureException } from '@exceptions/procedure.exception';
+import { NotModifiedException } from '@exceptions/not-modified.exception';
+import { QueryException } from '@exceptions/query.exception';
 import { Attribute } from '@repo-types/attribute.type';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { validate } from 'class-validator';
 
-@Injectable() export class AuthService {
+@Injectable() export class AuthService implements IAuth<Auth, CreateAuthDto & CreateUserDto> {
 
 	public constructor(@InjectRepository(Auth) private readonly authRepository: Repository<Auth>) {}
 
-	public async logup(user: CreateAuthDto & CreateUserDto): Promise<Attribute<User>> {
+	public async logup(user: CreateAuthDto & CreateUserDto): Promise<User['id']> {
 
 		try{
 
@@ -25,11 +29,7 @@ import { Repository } from 'typeorm';
 
 			);
 
-			return {
-
-				id: resultSet[0].account_id
-
-			}
+			return resultSet[0].account_id;
 
 		}catch(e){
 
@@ -39,22 +39,18 @@ import { Repository } from 'typeorm';
 
 	}
 
-	public async login(email: string, password: string, access_token: string, uuid?: string): Promise<{token: string}> {
+	public async login(email: Auth['email'], password: Auth['password'], uuid?: string): Promise<string> {
 
 		try{
 
 			const resultSet = await this.authRepository.query(
 
-				`CALL auth.create_token($1, $2, $3, $4)`,
-				[email, password, access_token, !uuid ? null : uuid]
+				`CALL auth.create_token($1, $2, $3)`,
+				[email, password, !uuid ? null : uuid]
 
 			);
 
-			return {
-
-				token: resultSet[0].token
-
-			}
+			return resultSet[0].token;
 
 		}catch(e){
 
@@ -64,13 +60,61 @@ import { Repository } from 'typeorm';
 
 	}
 
-	public async logout(access_token: string): Promise<void> {
+	public async logout(token: string): Promise<void> {
 
-		return this.revoke(access_token, false);
+		return this.revoke(token, false);
 
 	}
 
-	public async authorize(token: string): Promise<boolean> {
+	public async update(id: Auth['id'], updateAuthDto: UpdateAuthDto): Promise<void> {
+
+		let cred: Auth | undefined = await this.authRepository.preload({
+
+			id: id,
+			...updateAuthDto
+
+		});
+
+		if (cred===undefined){
+
+			throw new NotFoundException(`Credentials with id: ${id} was not found.`);
+
+		}
+
+		await validate(cred);
+
+		try {
+
+			await this.authRepository.save(cred);
+
+		}catch(e){
+
+			throw new QueryException(e.detail || e.message);
+
+		}
+
+	}
+
+	public async toggle(id: Auth['id']): Promise<void> {
+
+		try{
+
+			await this.authRepository.query(
+
+				`CALL auth.deactivate_account($1)`,
+				[id]
+
+			);
+
+		}catch(e){
+
+			throw new ProcedureException(e.message);
+
+		}
+
+	}
+
+	/*public async authorize(token: string): Promise<boolean> {
 
 		try{
 
@@ -89,7 +133,7 @@ import { Repository } from 'typeorm';
 
 		}
 
-	}
+	}/**/
 
 	public async authenticate(email: string, password: string): Promise<User | undefined> {
 
@@ -133,22 +177,18 @@ import { Repository } from 'typeorm';
 
 	}
 
-	public async refresh(token: string, access_token: string, uuid?: string): Promise<{token: string}> {
+	public async refresh(token: string, uuid?: string): Promise<string> {
 
 		try{
 
 			const resultSet = await this.authRepository.query(
 
-				`CALL auth.refresh_token($1, $2, $3)`,
-				[token, access_token, uuid]
+				`CALL auth.refresh_token($1, $2)`,
+				[token, uuid]
 
 			);
 
-			return {
-
-				token: resultSet[0].token
-
-			}
+			return resultSet[0].token;
 
 		}catch(e){
 
@@ -158,14 +198,14 @@ import { Repository } from 'typeorm';
 
 	}
 
-	public async revoke(access_token: string, SingleOrEvery: boolean): Promise<void> {
+	public async revoke(token: string, SingleOrEvery: boolean): Promise<void> {
 
 		try{
 
 			await this.authRepository.query(
 
 				`CALL auth.revoke_token($1, $2)`,
-				[access_token, SingleOrEvery]
+				[token, SingleOrEvery]
 
 			);
 

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Req, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Req, UseGuards, UnauthorizedException, BadRequestException } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { CreateUserDto } from '@user/dto/create-user.dto';
 import { CreateAuthDto } from './dto/create-auth.dto';
@@ -6,9 +6,11 @@ import { UpdateAuthDto } from './dto/update-auth.dto';
 import { Auth } from './entities/auth.entity';
 import { User } from '@user/entities/user.entity';
 import { Attribute } from '@repo-types/attribute.type';
+import { Interacted } from '@repo-types/interacted.type';
 import { Request } from 'express';
 import { AuthGuard } from '@core/guards/auth/auth.guard';
 import { JwtGuard } from '@core/guards/jwt/jwt.guard';
+import { AdminGuard } from '@core/guards/admin/admin.guard';
 import { TokenGuard } from '@core/guards/token/token.guard';
 
 @Controller('auth') export class AuthController {
@@ -21,9 +23,13 @@ import { TokenGuard } from '@core/guards/token/token.guard';
 
 	}
 
-	@Post('/logup') public logup(@Body() dto: CreateAuthDto & CreateUserDto): Promise<Attribute<User>> {
+	@Post('/logup') public async logup(@Body() dto: CreateAuthDto & CreateUserDto): Promise<Attribute<User>> {
 
-		return this.authService.logup(dto);
+		return {
+
+			id: await this.authService.logup(dto)
+
+		}
 
 	}
 
@@ -34,48 +40,72 @@ import { TokenGuard } from '@core/guards/token/token.guard';
 		return {
 
 			access_token: access,
-			refresh_token: (await this.authService.login(
+			refresh_token: await this.authService.login(
 
-				body.email, body.password, access, req.headers['uuid'] as string | undefined
+				body.email, body.password, req.headers['uuid'] as string | undefined
 
-			)).token
+			)
 
 		};
 
 	}
 
-	@UseGuards(TokenGuard) @Post('/refresh') public async refresh(@Req() req: Request, @Body() body: {refresh_token: string}): Promise<{access_token: string, refresh_token: string}> {
+	@UseGuards(TokenGuard) @Post('/refresh') public async refresh(@Req() req: Request, @Body() body: {refresh_token?: string}): Promise<{access_token: string, refresh_token: string}> {
 
-		const access = req.user as string;
+		const token = body.refresh_token;
+
+		if (!token) throw new BadRequestException('refresh_token cannot be empty.');
 
 		return {
 
-			access_token: access,
-			refresh_token: (await this.authService.refresh(
+			access_token: req.user as string,
+			refresh_token: await this.authService.refresh(
 
-				body.refresh_token, access, req.headers['uuid'] as string | undefined
+				token, req.headers['uuid'] as string | undefined
 
-			)).token
+			)
 
 		};
 
 	}
 
-	@UseGuards(JwtGuard) @Delete('/logout') public async logout(@Req() req: Request): Promise<void> {
+	@UseGuards(JwtGuard) @Patch(':id') public async update(@Req() req: Request, @Param('id') id: Auth['id'], @Body() dto: UpdateAuthDto): Promise<void>{
 
-		const authHeader = req.headers.authorization as string;
-		const access_token = authHeader.replace("Bearer ", "");
+		const user: User & {iat: number, exp: number} = req.user as User & {iat: number, exp: number};
 
-		this.authService.logout(access_token);
+		if (user.id!==id && !user.admin) throw new UnauthorizedException('Only authorized accounts can update users.');
+
+		this.authService.update(id, dto);
 
 	}
 
-	@UseGuards(JwtGuard) @Delete('/revoke') public async revoke(@Req() req: Request): Promise<void> {
+	@UseGuards(JwtGuard) @Delete(':id') public async toggle(@Req() req: Request, @Param('id') id: Auth['id']): Promise<void>{
 
-		const authHeader = req.headers.authorization as string;
-		const access_token = authHeader.replace("Bearer ", "");
+		const user: User & {iat: number, exp: number} = req.user as User & {iat: number, exp: number};
 
-		this.authService.revoke(access_token, true);
+		if (user.id!==id && !user.admin) throw new UnauthorizedException('Only authorized accounts can delete users.');
+
+		this.authService.toggle(id);
+
+	}
+
+	@UseGuards(JwtGuard) @Delete('/logout') public async logout(@Body() body: {refresh_token?: string}): Promise<void> {
+
+		const token = body.refresh_token;
+
+		if (!token) throw new BadRequestException('refresh_token cannot be empty.');
+
+		this.authService.logout(token);
+
+	}
+
+	@UseGuards(AdminGuard) @Delete('/revoke') public async revoke(@Body() body: {refresh_token?: string}): Promise<void> {
+
+		const token = body.refresh_token;
+
+		if (!token) throw new BadRequestException('refresh_token cannot be empty.');
+
+		this.authService.revoke(token, true);
 
 	}
 

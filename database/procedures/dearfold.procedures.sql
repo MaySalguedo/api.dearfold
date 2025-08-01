@@ -1,4 +1,4 @@
-\c joyfold;
+\c dearfold;
 
 CREATE OR REPLACE PROCEDURE auth.set_credential(
 
@@ -91,7 +91,6 @@ CREATE OR REPLACE PROCEDURE auth.create_token(
 
 	email_param VARCHAR,
 	password_param VARCHAR,
-	access_token_param VARCHAR,
 	uuid_param VARCHAR DEFAULT NULL,
 	INOUT token VARCHAR DEFAULT NULL
 
@@ -101,11 +100,11 @@ CREATE OR REPLACE PROCEDURE auth.create_token(
 
 		INSERT INTO auth.token(
 
-			user_id, uuid, access_token
+			user_id, uuid
 
 		) SELECT
 
-			u.id, uuid_param, access_token_param
+			u.id, uuid_param
 
 		FROM
 
@@ -125,7 +124,7 @@ $$;
 
 CREATE OR REPLACE PROCEDURE auth.refresh_token(
 
-	token_id_param VARCHAR, access_token_param VARCHAR, uuid_param VARCHAR, INOUT token VARCHAR DEFAULT NULL
+	token_id_param VARCHAR, uuid_param VARCHAR, INOUT token VARCHAR DEFAULT NULL
 
 ) LANGUAGE plpgsql AS $$
 
@@ -143,11 +142,11 @@ CREATE OR REPLACE PROCEDURE auth.refresh_token(
 
 		INSERT INTO auth.token(
 
-			user_id, uuid, access_token
+			user_id, uuid
 
 		) SELECT
 
-			t.user_id, t.uuid, access_token_param
+			t.user_id, t.uuid
 
 		FROM
 
@@ -177,15 +176,15 @@ $$;
 
 CREATE OR REPLACE PROCEDURE auth.revoke_token(
 
-	access_token_param VARCHAR, single_or_every BOOLEAN DEFAULT FALSE
+	token_id_param VARCHAR, single_or_every BOOLEAN DEFAULT FALSE
 
 ) LANGUAGE plpgsql AS $$
 
 	BEGIN
 
-		IF (access_token_param IS NULL OR NOT EXISTS(
+		IF (token_id_param IS NULL OR NOT EXISTS(
 
-			SELECT * FROM auth.token WHERE access_token = access_token_param
+			SELECT * FROM auth.token AS t WHERE t.id = token_id_param
 
 		)) THEN
 
@@ -201,7 +200,7 @@ CREATE OR REPLACE PROCEDURE auth.revoke_token(
 
 			WHERE user_id IN (
 
-				SELECT t.user_id FROM auth.token AS t WHERE access_token = access_token_param
+				SELECT t.user_id FROM auth.token AS t WHERE t.id = token_id_param
 
 			);
 
@@ -211,7 +210,7 @@ CREATE OR REPLACE PROCEDURE auth.revoke_token(
 
 				state = FALSE
 
-			WHERE access_token = access_token_param;
+			WHERE id = token_id_param;
 
 		END IF;
 
@@ -234,8 +233,28 @@ CREATE OR REPLACE PROCEDURE auth.invalidate_expired_tokens() LANGUAGE plpgsql AS
 			state = FALSE
 
 		WHERE expiresat < CURRENT_TIMESTAMP AND state = TRUE;
-		
+
 		COMMIT;
+
+	END;
+
+$$;
+
+CREATE OR REPLACE PROCEDURE auth.deactivate_account(account_id_param VARCHAR) LANGUAGE plpgsql AS $$
+
+	BEGIN
+
+		DELETE FROM auth.credential WHERE id = account_id_param;
+
+		UPDATE auth.user SET
+
+			state = FALSE
+
+		WHERE id = account_id_param;
+
+	EXCEPTION
+
+		WHEN OTHERS THEN RAISE;
 
 	END;
 

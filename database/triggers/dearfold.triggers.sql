@@ -1,4 +1,4 @@
-\c joyfold;
+\c dearfold;
 
 CREATE OR REPLACE TRIGGER invoke_credential_id BEFORE INSERT ON auth.credential
 
