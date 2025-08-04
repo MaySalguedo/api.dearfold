@@ -24,9 +24,32 @@ async function bootstrap() {
 
 	}));
 
+	const allowedOrigins = [
+
+		'http://localhost:5173',
+		'http://localhost:8100',
+		'http://localhost:8080',
+		'capacitor://localhost',
+		'http://localhost'
+
+	];
+
 	app.enableCors({
 
-		origin: 'http://localhost:5173', 
+		origin: (origin, callback) => {
+
+			if (!origin) return callback(null, true);
+			
+			if (allowedOrigins.includes(origin) || origin.includes('http://localhost:') ||	origin.includes('ionic://')) {
+
+				return callback(null, true);
+
+			}
+			
+			callback(new Error('Origen no permitido por CORS'));
+		}, methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+		credentials: true,
+		allowedHeaders: 'Content-Type, Authorization, X-Requested-With'
 
 	});
 
