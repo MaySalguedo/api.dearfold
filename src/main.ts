@@ -3,11 +3,15 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { Request, Response, NextFunction } from 'express';
 import * as dotenv from 'dotenv';
+import * as cookieParser from 'cookie-parser';
 
 async function bootstrap() {
 
-	const app = await NestFactory.create(AppModule);
 	dotenv.config();
+
+	const app = await NestFactory.create(AppModule);
+
+	app.use(cookieParser());
 
 	app.use((_req: Request, res: Response, next: NextFunction) => {
 

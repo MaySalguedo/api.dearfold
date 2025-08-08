@@ -52,6 +52,7 @@ import { TokenGuard } from '@core/guards/token/token.guard';
 
 	@UseGuards(TokenGuard) @Post('/refresh') public async refresh(@Req() req: Request, @Body() body: {refresh_token?: string}): Promise<{access_token: string, refresh_token: string}> {
 
+		console.log(req.cookies['refresh_token']);
 		const token = body.refresh_token;
 
 		if (!token) throw new BadRequestException('refresh_token cannot be empty.');
