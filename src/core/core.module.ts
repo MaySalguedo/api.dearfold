@@ -1,4 +1,4 @@
-import { Module, NotFoundException } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 
 import { APP_FILTER } from '@nestjs/core';
 
@@ -25,6 +25,8 @@ import { PipelineFilter } from './filters/pipeline/pipeline.filter';
 
 import { Client, Storage } from 'node-appwrite';
 
+import { FailedDependencyException } from '@exceptions/failed-dependency.exception';
+
 @Module({
 
 	imports: [
@@ -49,7 +51,7 @@ import { Client, Storage } from 'node-appwrite';
 
 				if (!endpoint || !project || !key){
 
-					throw new NotFoundException('Appwrite environment variables could not be found.');
+					throw new FailedDependencyException('Appwrite environment variables could not be found.');
 
 				}
 

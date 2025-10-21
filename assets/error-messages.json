@@ -14,5 +14,7 @@
   "G001": "Internal server error",
   "G002": "Invalid parameters upon request",
   "G003": "Credentials were not found",
-  "G004": "Forbidden access"
+  "G004": "Forbidden access",
+  "G005": "Not found",
+  "G006": "Conflict upon request"
 }

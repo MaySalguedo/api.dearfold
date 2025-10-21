@@ -20,43 +20,27 @@ import { validate } from 'class-validator';
 
 	public async logup(user: CreateAuthDto & CreateUserDto): Promise<User['id']> {
 
-		try{
+		const resultSet = await this.authRepository.query(
 
-			const resultSet = await this.authRepository.query(
+			`CALL auth.create_account($1, $2, $3, $4, $5)`,
+			[user.email, user.password, user.name, null, !user.picture ? null : user.picture]
 
-				`CALL auth.create_account($1, $2, $3, $4, $5)`,
-				[user.email, user.password, user.name, null, !user.picture ? null : user.picture]
+		);
 
-			);
-
-			return resultSet[0].account_id;
-
-		}catch(e){
-
-			throw new ProcedureException(e.message);
-
-		}
+		return resultSet[0].account_id;
 
 	}
 
 	public async login(email: Auth['email'], password: Auth['password'], uuid?: string): Promise<string> {
 
-		try{
+		const resultSet = await this.authRepository.query(
 
-			const resultSet = await this.authRepository.query(
+			`CALL auth.create_token($1, $2, $3)`,
+			[email, password, !uuid ? null : uuid]
 
-				`CALL auth.create_token($1, $2, $3)`,
-				[email, password, !uuid ? null : uuid]
+		);
 
-			);
-
-			return resultSet[0].token;
-
-		}catch(e){
-
-			throw new ProcedureException(e.message);
-
-		}
+		return resultSet[0].token;
 
 	}
 
@@ -77,40 +61,24 @@ import { validate } from 'class-validator';
 
 		if (cred===undefined){
 
-			throw new NotFoundException(`Credentials with id: ${id} was not found.`);
+			throw new NotFoundException(`Credentials with id: ${id} were not found.`);
 
 		}
 
 		await validate(cred);
 
-		try {
-
-			await this.authRepository.save(cred);
-
-		}catch(e){
-
-			throw new QueryException(e.detail || e.message);
-
-		}
+		await this.authRepository.save(cred);
 
 	}
 
 	public async toggle(id: Auth['id']): Promise<void> {
 
-		try{
+		await this.authRepository.query(
 
-			await this.authRepository.query(
+			`CALL auth.deactivate_account($1)`,
+			[id]
 
-				`CALL auth.deactivate_account($1)`,
-				[id]
-
-			);
-
-		}catch(e){
-
-			throw new ProcedureException(e.message);
-
-		}
+		);
 
 	}
 
@@ -137,102 +105,62 @@ import { validate } from 'class-validator';
 
 	public async authenticate(email: string, password: string): Promise<User | undefined> {
 
-		try{
+		const resultSet = await this.authRepository.query(
 
-			const resultSet = await this.authRepository.query(
+			`SELECT * FROM auth.authenticate($1, $2)`,
+			[email, password]
 
-				`SELECT * FROM auth.authenticate($1, $2)`,
-				[email, password]
+		);
 
-			);
-
-			return resultSet.length===0 ? undefined : resultSet[0];
-
-		}catch(e){
-
-			throw new ProcedureException(e.message);
-
-		}
+		return resultSet.length===0 ? undefined : resultSet[0];
 
 	}
 
 	public async authenticate_by_token(token: string): Promise<User | undefined> {
 
-		try{
+		const resultSet = await this.authRepository.query(
 
-			const resultSet = await this.authRepository.query(
+			`SELECT * FROM auth.authenticate_by_token($1)`,
+			[token]
 
-				`SELECT * FROM auth.authenticate_by_token($1)`,
-				[token]
+		);
 
-			);
-
-			return resultSet.length===0 ? undefined : resultSet[0];
-
-		}catch(e){
-
-			throw new ProcedureException(e.message);
-
-		}
+		return resultSet.length===0 ? undefined : resultSet[0];
 
 	}
 
 	public async refresh(token: string, uuid?: string): Promise<string> {
 
-		try{
+		const resultSet = await this.authRepository.query(
 
-			const resultSet = await this.authRepository.query(
+			`CALL auth.refresh_token($1, $2)`,
+			[token, uuid]
 
-				`CALL auth.refresh_token($1, $2)`,
-				[token, uuid]
+		);
 
-			);
-
-			return resultSet[0].token;
-
-		}catch(e){
-
-			throw new ProcedureException(e.message);
-
-		}
+		return resultSet[0].token;
 
 	}
 
 	public async revoke(token: string, SingleOrEvery: boolean): Promise<void> {
 
-		try{
+		await this.authRepository.query(
 
-			await this.authRepository.query(
+			`CALL auth.revoke_token($1, $2)`,
+			[token, SingleOrEvery]
 
-				`CALL auth.revoke_token($1, $2)`,
-				[token, SingleOrEvery]
-
-			);
-
-		}catch(e){
-
-			throw new ProcedureException(e.message);
-
-		}
+		);
 
 	}
 
 	@Cron(CronExpression.EVERY_HOUR) public async invalidate_expired_tokens(): Promise<void> {
 
-		try{
+		const resultSet = await this.authRepository.query(
 
-			const resultSet = await this.authRepository.query(
+			`CALL auth.invalidate_expired_tokens()`,
+			[]
 
-				`CALL auth.invalidate_expired_tokens()`,
-				[]
-
-			);
-
-		}catch(e){
-
-			throw new ProcedureException(e.message);
-
-		}
+		);
 
 	}
 

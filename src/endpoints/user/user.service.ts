@@ -16,37 +16,21 @@ import { validate } from 'class-validator';
 
 	public async findOne(id: User['id']): Promise<User | null>{
 
-		try{
+		return await this.userRepository.findOne({
 
-			return await this.userRepository.findOne({
+			where: {
 
-				where: {
+				id: id
 
-					id: id
+			}
 
-				}
-
-			});
-
-		}catch(e){
-
-			throw new QueryException(e.detail || e.message);
-
-		}
+		});
 
 	}
 
 	public async findAll(): Promise<Array<User>>{
 
-		try{
-
-			return await this.userRepository.find();
-
-		}catch(e){
-
-			throw new QueryException(e.detail || e.message);
-
-		}
+		return await this.userRepository.find();
 
 	}
 
@@ -67,15 +51,7 @@ import { validate } from 'class-validator';
 
 		await validate(user);
 
-		try {
-
-			await this.userRepository.save(user);
-
-		}catch(e){
-
-			throw new QueryException(e.detail || e.message);
-
-		}
+		await this.userRepository.save(user);
 
 	}
 

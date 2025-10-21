@@ -54,7 +54,7 @@ import { TokenGuard } from '@core/guards/token/token.guard';
 
 		const token = body.refresh_token;
 
-		if (!token) throw new BadRequestException('refresh_token cannot be empty.');
+		if (!token) throw new BadRequestException(['refresh_token cannot be empty.']);
 
 		return {
 
@@ -75,7 +75,7 @@ import { TokenGuard } from '@core/guards/token/token.guard';
 
 		if (user.id!==id && !user.admin) throw new UnauthorizedException('Only authorized accounts can update users.');
 
-		this.authService.update(id, dto);
+		await this.authService.update(id, dto);
 
 	}
 
@@ -85,7 +85,7 @@ import { TokenGuard } from '@core/guards/token/token.guard';
 
 		if (user.id!==id && !user.admin) throw new UnauthorizedException('Only authorized accounts can delete users.');
 
-		this.authService.toggle(id);
+		await this.authService.toggle(id);
 
 	}
 
@@ -95,7 +95,7 @@ import { TokenGuard } from '@core/guards/token/token.guard';
 
 		if (!token) throw new BadRequestException('refresh_token cannot be empty.');
 
-		this.authService.logout(token);
+		await this.authService.logout(token);
 
 	}
 
@@ -103,9 +103,9 @@ import { TokenGuard } from '@core/guards/token/token.guard';
 
 		const token = body.refresh_token;
 
-		if (!token) throw new BadRequestException('refresh_token cannot be empty.');
+		if (!token) throw new BadRequestException(['refresh_token cannot be empty.']);
 
-		this.authService.revoke(token, true);
+		await this.authService.revoke(token, true);
 
 	}
 

@@ -1,7 +1,8 @@
 import {
 
 	ExceptionFilter, Catch, ArgumentsHost, HttpStatus, Inject, Logger,
-	InternalServerErrorException, BadRequestException, NotFoundException, UnauthorizedException, ForbiddenException
+	InternalServerErrorException, BadRequestException, NotFoundException, UnauthorizedException, ForbiddenException, ConflictException
+
 } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { ErrorMappingService } from '@core/services/error-mapping/error-mapping.service';
@@ -9,9 +10,12 @@ import { ErrorMappingService } from '@core/services/error-mapping/error-mapping.
 import { ErrorResponse } from '@common/interfaces/api/error-response.interface';
 import { ApiErrorResponse } from '@common/interfaces/api/api-error-response.interface';
 
+import { FailedDependencyException } from '@exceptions/failed-dependency.exception';
+
 @Catch(
 
-	BadRequestException, NotFoundException, UnauthorizedException, ForbiddenException, InternalServerErrorException
+	BadRequestException, NotFoundException, UnauthorizedException, ForbiddenException,
+	InternalServerErrorException, ConflictException, FailedDependencyException
 
 ) export class PipelineFilter implements ExceptionFilter {
 
@@ -19,7 +23,7 @@ import { ApiErrorResponse } from '@common/interfaces/api/api-error-response.inte
 
 	catch(
 
-		exception: BadRequestException | NotFoundException | UnauthorizedException | ForbiddenException | InternalServerErrorException,
+		exception: BadRequestException | NotFoundException | UnauthorizedException | ForbiddenException | InternalServerErrorException | ConflictException | FailedDependencyException,
 		host: ArgumentsHost
 
 	): void {
@@ -60,7 +64,7 @@ import { ApiErrorResponse } from '@common/interfaces/api/api-error-response.inte
 				result.error =  'G002';
 				result.message = this.errorMappingService.getMessage(result.error, exception.message);
 
-			} else if (exception instanceof NotFoundException) {
+			} else if (exception instanceof FailedDependencyException) {
 
 				result = {
 
@@ -90,6 +94,28 @@ import { ApiErrorResponse } from '@common/interfaces/api/api-error-response.inte
 					status: HttpStatus.FORBIDDEN,
 					error: 'G004',
 					message: this.errorMappingService.getMessage('G004', exception.message)
+
+				};
+
+			} else if (exception instanceof NotFoundException) {
+
+				result = {
+
+					...result,
+					status: HttpStatus.NOT_FOUND,
+					error: 'G005',
+					message: this.errorMappingService.getMessage('G005', exception.message)
+
+				};
+
+			} else if (exception instanceof ConflictException) {
+
+				result = {
+
+					...result,
+					status: HttpStatus.CONFLICT,
+					error: 'G006',
+					message: this.errorMappingService.getMessage('G006', exception.message)
 
 				};
 

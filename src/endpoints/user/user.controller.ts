@@ -13,13 +13,13 @@ import { AdminGuard } from '@core/guards/admin/admin.guard';
 
 	@UseGuards(AdminGuard) @Get('/:id') public async findOne(@Param('id') id: string): Promise<User | null>{
 
-		return this.userService.findOne(id);
+		return await this.userService.findOne(id);
 
 	}
 
 	@UseGuards(AdminGuard) @Get('/') public async findAll(): Promise<Array<User>>{
 
-		return this.userService.findAll();
+		return await this.userService.findAll();
 
 	}
 
@@ -29,7 +29,7 @@ import { AdminGuard } from '@core/guards/admin/admin.guard';
 
 		if (user.id!==id && !user.admin) throw new UnauthorizedException('Only authorized accounts can update users.');
 
-		this.userService.update(id, dto);
+		await this.userService.update(id, dto);
 
 	}
 
