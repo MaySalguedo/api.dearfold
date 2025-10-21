@@ -5,6 +5,7 @@
 
 			"@core/*": ["src/core/*"],
 			"@models/*": ["src/common/models/*"],
+			"@common/*": ["src/common/*"],
 			"@repo-types/*": ["src/common/types/*"],
 			"@exceptions/*": ["src/common/exceptions/*"],
 			"@interfaces/*": ["src/common/interfaces/*"],

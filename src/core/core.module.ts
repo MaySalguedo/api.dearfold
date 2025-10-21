@@ -1,5 +1,7 @@
 import { Module, NotFoundException } from '@nestjs/common';
 
+import { APP_FILTER } from '@nestjs/core';
+
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { databaseConfig } from './config/env.config';
 
@@ -15,6 +17,11 @@ import { AuthGuard } from './guards/auth/auth.guard';
 import { JwtGuard } from './guards/jwt/jwt.guard';
 import { AdminGuard } from './guards/admin/admin.guard';
 import { TokenGuard } from './guards/token/token.guard';
+
+import { ErrorMappingService } from './services/error-mapping/error-mapping.service';
+
+import { TypeOrmExceptionFilter } from './filters/type-orm-exception/type-orm-exception.filter';
+import { PipelineFilter } from './filters/pipeline/pipeline.filter';
 
 import { Client, Storage } from 'node-appwrite';
 
@@ -57,7 +64,25 @@ import { Client, Storage } from 'node-appwrite';
 
 				return new Storage(client);
 
-			}
+			}, inject: [Client]
+
+		}, ErrorMappingService, TypeOrmExceptionFilter, PipelineFilter, {
+
+			provide: APP_FILTER,
+			useFactory: (errorMappingService: ErrorMappingService) => {
+
+				return new TypeOrmExceptionFilter(errorMappingService);
+
+			}, inject: [ErrorMappingService]
+
+		}, {
+
+			provide: APP_FILTER,
+			useFactory: (errorMappingService: ErrorMappingService) => {
+
+				return new PipelineFilter(errorMappingService);
+
+			}, inject: [ErrorMappingService]
 
 		}
 

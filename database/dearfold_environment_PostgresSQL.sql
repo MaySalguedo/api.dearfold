@@ -377,7 +377,7 @@ CREATE OR REPLACE PROCEDURE auth.create_account(
 
 		) THEN
 
-			RAISE EXCEPTION 'The username % is already taken.', name_param;
+			RAISE EXCEPTION 'DRFLD-002:%', name_param;
 
 		END IF;
 
@@ -387,7 +387,7 @@ CREATE OR REPLACE PROCEDURE auth.create_account(
 
 		) THEN
 
-			RAISE EXCEPTION 'The email % has been logged up already. Try a different one.', email_param;
+			RAISE EXCEPTION 'DRFLD-003:%', email_param;
 
 		END IF;
 
@@ -468,7 +468,7 @@ CREATE OR REPLACE PROCEDURE auth.refresh_token(
 
 		)) THEN
 
-			RAISE EXCEPTION 'Invalid uuid.';
+			RAISE EXCEPTION 'DRFLD-001:%', uuid_param;
 
 		END IF;
 
@@ -520,7 +520,7 @@ CREATE OR REPLACE PROCEDURE auth.revoke_token(
 
 		)) THEN
 
-			RAISE EXCEPTION 'Invalid token.';
+			RAISE EXCEPTION 'DRFLD-000:%', token_id_param;
 
 		END IF;
 

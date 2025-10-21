@@ -1,0 +1,18 @@
+{
+  "DRFLD-000": "Invalid token: {0}",
+  "DRFLD-001": "Invalid uuid: {0}",
+  "DRFLD-002": "The username {0} is already taken.",
+  "DRFLD-003": "The email {0} has been logged up already. Try a different one.",
+  
+  "DB001": "Query database error",
+  "DB002": "Resource not found",
+  "DB003": "Element already exist",
+  "DB004": "Foreign key violation",
+  "DB005": "Database connection error",
+  
+  "G000": "Authorization required",
+  "G001": "Internal server error",
+  "G002": "Invalid parameters upon request",
+  "G003": "Credentials were not found",
+  "G004": "Forbidden access"
+}
