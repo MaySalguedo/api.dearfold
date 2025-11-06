@@ -1,29 +1,30 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Req, UseGuards, UnauthorizedException, BadRequestException } from '@nestjs/common';
-import { AuthService } from './auth.service';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Req, UnauthorizedException, BadRequestException } from '@nestjs/common';
+
 import { CreateUserDto } from '@user/dto/create-user.dto';
 import { CreateAuthDto } from './dto/create-auth.dto';
 import { UpdateAuthDto } from './dto/update-auth.dto';
+import { AuthService } from './auth.service';
 import { Auth } from './entities/auth.entity';
 import { User } from '@user/entities/user.entity';
+
 import { Attribute } from '@repo-types/attribute.type';
-import { Interacted } from '@repo-types/interacted.type';
+
+import { UseGuards } from '@decorators/use-guard.decorator';
+import { PublicGuard } from '@decorators/public-guard.decorator';
+
 import { Request } from 'express';
-import { AuthGuard } from '@core/guards/auth/auth.guard';
-import { JwtGuard } from '@core/guards/jwt/jwt.guard';
-import { AdminGuard } from '@core/guards/admin/admin.guard';
-import { TokenGuard } from '@core/guards/token/token.guard';
 
 @Controller('auth') export class AuthController {
 
 	public constructor(private readonly authService: AuthService) {}
 
-	@UseGuards(JwtGuard) @Get('/status') public status(@Req() req: Request): User & {iat: number, exp: number} {
+	@Get('/status') public status(@Req() req: Request): User & {iat: number, exp: number} {
 
 		return req.user as User & {iat: number, exp: number};
 
 	}
 
-	@Post('/logup') public async logup(@Body() dto: CreateAuthDto & CreateUserDto): Promise<Attribute<User>> {
+	@PublicGuard() @Post('/logup') public async logup(@Body() dto: CreateAuthDto & CreateUserDto): Promise<Attribute<User>> {
 
 		return {
 
@@ -33,7 +34,7 @@ import { TokenGuard } from '@core/guards/token/token.guard';
 
 	}
 
-	@UseGuards(AuthGuard) @Post('/login') public async login(@Req() req: Request, @Body() body: CreateAuthDto): Promise<{access_token: string, refresh_token: string}> {
+	@UseGuards('auth') @Post('/login') public async login(@Req() req: Request, @Body() body: CreateAuthDto): Promise<{access_token: string, refresh_token: string}> {
 
 		const access = req.user as string;
 
@@ -50,7 +51,7 @@ import { TokenGuard } from '@core/guards/token/token.guard';
 
 	}
 
-	@UseGuards(TokenGuard) @Post('/refresh') public async refresh(@Req() req: Request, @Body() body: {refresh_token?: string}): Promise<{access_token: string, refresh_token: string}> {
+	@UseGuards('token') @Post('/refresh') public async refresh(@Req() req: Request, @Body() body: {refresh_token?: string}): Promise<{access_token: string, refresh_token: string}> {
 
 		const token = body.refresh_token;
 
@@ -69,7 +70,7 @@ import { TokenGuard } from '@core/guards/token/token.guard';
 
 	}
 
-	@UseGuards(JwtGuard) @Patch(':id') public async update(@Req() req: Request, @Param('id') id: Auth['id'], @Body() dto: UpdateAuthDto): Promise<void>{
+	@Patch(':id') public async update(@Req() req: Request, @Param('id') id: Auth['id'], @Body() dto: UpdateAuthDto): Promise<void>{
 
 		const user: User & {iat: number, exp: number} = req.user as User & {iat: number, exp: number};
 
@@ -79,7 +80,7 @@ import { TokenGuard } from '@core/guards/token/token.guard';
 
 	}
 
-	@UseGuards(JwtGuard) @Delete(':id') public async toggle(@Req() req: Request, @Param('id') id: Auth['id']): Promise<void>{
+	@Delete(':id') public async toggle(@Req() req: Request, @Param('id') id: Auth['id']): Promise<void>{
 
 		const user: User & {iat: number, exp: number} = req.user as User & {iat: number, exp: number};
 
@@ -89,7 +90,7 @@ import { TokenGuard } from '@core/guards/token/token.guard';
 
 	}
 
-	@UseGuards(JwtGuard) @Delete('/logout') public async logout(@Body() body: {refresh_token?: string}): Promise<void> {
+	@Delete('/logout') public async logout(@Body() body: {refresh_token?: string}): Promise<void> {
 
 		const token = body.refresh_token;
 
@@ -99,7 +100,7 @@ import { TokenGuard } from '@core/guards/token/token.guard';
 
 	}
 
-	@UseGuards(AdminGuard) @Delete('/revoke') public async revoke(@Body() body: {refresh_token?: string}): Promise<void> {
+	@UseGuards('admin') @Delete('/revoke') public async revoke(@Body() body: {refresh_token?: string}): Promise<void> {
 
 		const token = body.refresh_token;
 

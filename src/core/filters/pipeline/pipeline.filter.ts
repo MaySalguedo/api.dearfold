@@ -1,13 +1,13 @@
 import {
 
-	ExceptionFilter, Catch, ArgumentsHost, HttpStatus, Inject, Logger,
-	InternalServerErrorException, BadRequestException, NotFoundException, UnauthorizedException, ForbiddenException, ConflictException
+	ExceptionFilter, Catch, ArgumentsHost, HttpStatus,
+	InternalServerErrorException, BadRequestException, NotFoundException,
+	UnauthorizedException, ForbiddenException, ConflictException
 
 } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { ErrorMappingService } from '@core/services/error-mapping/error-mapping.service';
 
-import { ErrorResponse } from '@common/interfaces/api/error-response.interface';
 import { ApiErrorResponse } from '@common/interfaces/api/api-error-response.interface';
 
 import { FailedDependencyException } from '@exceptions/failed-dependency.exception';
@@ -45,7 +45,19 @@ import { FailedDependencyException } from '@exceptions/failed-dependency.excepti
 
 		try {
 
-			if (exception instanceof BadRequestException) {
+			if (exception instanceof InternalServerErrorException){
+
+				const responseMessage = exception.getResponse();
+
+				if (typeof responseMessage === 'object' && responseMessage !== null) {
+
+					const resp = responseMessage as Record<string, any>;
+					if (resp.error) result.detail.push(String(resp.error));
+					if (resp.error_description) result.detail.push(String(resp.error_description));
+
+				}
+
+			}if (exception instanceof BadRequestException) {
 
 				const responseMessage = exception.getResponse();
 
@@ -116,15 +128,6 @@ import { FailedDependencyException } from '@exceptions/failed-dependency.excepti
 					status: HttpStatus.CONFLICT,
 					error: 'G006',
 					message: this.errorMappingService.getMessage('G006', exception.message)
-
-				};
-
-			} else if (exception instanceof InternalServerErrorException) {
-
-				result = {
-
-					...result,
-					message: this.errorMappingService.getMessage(result.error, exception.message)
 
 				};
 

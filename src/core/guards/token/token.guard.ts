@@ -4,9 +4,9 @@ import { Observable } from 'rxjs';
 
 @Injectable() export class TokenGuard extends AuthGuard('token') {
 
-	public canActivate(context: ExecutionContext): boolean | Promise<boolean> | Observable<boolean> {
+	public canActivate(context: ExecutionContext): boolean | Promise<boolean> {
 
-		return super.canActivate(context);
+		return super.canActivate(context) as boolean | Promise<boolean>;
 
 	}
 

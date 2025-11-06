@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 
-import { APP_FILTER } from '@nestjs/core';
+import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { databaseConfig } from './config/env.config';
@@ -17,6 +17,7 @@ import { AuthGuard } from './guards/auth/auth.guard';
 import { JwtGuard } from './guards/jwt/jwt.guard';
 import { AdminGuard } from './guards/admin/admin.guard';
 import { TokenGuard } from './guards/token/token.guard';
+import { OrchestratorGuard } from './guards/orchestrator/orchestrator.guard';
 
 import { ErrorMappingService } from './services/error-mapping/error-mapping.service';
 
@@ -40,33 +41,11 @@ import { FailedDependencyException } from '@exceptions/failed-dependency.excepti
 
 	], providers: [
 
-		AuthStrategy, JwtStrategy, AuthGuard, JwtGuard, AdminGuard, TokenStrategy, TokenGuard, {
+		AuthStrategy, JwtStrategy, TokenStrategy,
+		AuthGuard, JwtGuard, AdminGuard, TokenGuard, OrchestratorGuard, {
 
-			provide: Client,
-			useFactory: () => {
-
-				const endpoint: string | undefined = process.env.APPWRITE_ENDPOINT;
-				const project: string | undefined = process.env.APPWRITE_PROJECT_ID;
-				const key: string | undefined = process.env.APPWRITE_KEY_SECRET;
-
-				if (!endpoint || !project || !key){
-
-					throw new FailedDependencyException('Appwrite environment variables could not be found.');
-
-				}
-
-				return new Client().setEndpoint(endpoint).setProject(project).setKey(key);
-
-			}
-
-		}, {
-
-			provide: Storage,
-			useFactory: (client: Client) => {
-
-				return new Storage(client);
-
-			}, inject: [Client]
+			provide: APP_GUARD,
+			useClass: OrchestratorGuard
 
 		}, ErrorMappingService, TypeOrmExceptionFilter, PipelineFilter, {
 
@@ -88,6 +67,10 @@ import { FailedDependencyException } from '@exceptions/failed-dependency.excepti
 
 		}
 
-	], exports: []
+	], exports: [
+
+		AuthGuard, JwtGuard, AdminGuard, TokenGuard, OrchestratorGuard
+
+	]
 
 }) export class CoreModule {}

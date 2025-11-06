@@ -76,7 +76,7 @@ import { ApiErrorResponse } from '@common/interfaces/api/api-error-response.inte
 		const pgMessage: string = exception.message;
 		const defaultMessage: string = exceptionDriver.detail || exceptionDriver.error || this.errorMappingService.getMessage('DB001', pgMessage);
 
-		const customErrorMatch: RegExpMatchArray | null = pgMessage.match(/^(SPLC-\d{3}):\s*(.*)$/);
+		const customErrorMatch: RegExpMatchArray | null = pgMessage.match(/^(DRFLD-\d{3}):\s*(.*)$/);
 
 		if (customErrorMatch) {
 

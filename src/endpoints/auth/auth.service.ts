@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { CreateUserDto } from '@user/dto/create-user.dto';
 import { CreateAuthDto } from './dto/create-auth.dto';
@@ -6,10 +6,6 @@ import { UpdateAuthDto } from './dto/update-auth.dto';
 import { IAuth } from './interfaces/auth.interface';
 import { Auth } from './entities/auth.entity';
 import { User } from '@user/entities/user.entity';
-import { ProcedureException } from '@exceptions/procedure.exception';
-import { NotModifiedException } from '@exceptions/not-modified.exception';
-import { QueryException } from '@exceptions/query.exception';
-import { Attribute } from '@repo-types/attribute.type';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { validate } from 'class-validator';
