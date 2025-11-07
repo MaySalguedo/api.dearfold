@@ -1,6 +1,6 @@
-import { Module } from '@nestjs/common';
+import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
 
-import { APP_FILTER, APP_GUARD } from '@nestjs/core';
+import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { databaseConfig } from './config/env.config';
@@ -18,6 +18,10 @@ import { JwtGuard } from './guards/jwt/jwt.guard';
 import { AdminGuard } from './guards/admin/admin.guard';
 import { TokenGuard } from './guards/token/token.guard';
 import { OrchestratorGuard } from './guards/orchestrator/orchestrator.guard';
+
+import { TransformInterceptor } from './interceptors/transform/transform.interceptor';
+
+import { HeaderMiddleware } from './middlewares/header/header.middleware';
 
 import { ErrorMappingService } from './services/error-mapping/error-mapping.service';
 
@@ -41,11 +45,17 @@ import { FailedDependencyException } from '@exceptions/failed-dependency.excepti
 
 	], providers: [
 
+		HeaderMiddleware, TransformInterceptor,
 		AuthStrategy, JwtStrategy, TokenStrategy,
 		AuthGuard, JwtGuard, AdminGuard, TokenGuard, OrchestratorGuard, {
 
 			provide: APP_GUARD,
 			useClass: OrchestratorGuard
+
+		}, {
+
+			provide: APP_INTERCEPTOR,
+			useClass: TransformInterceptor
 
 		}, ErrorMappingService, TypeOrmExceptionFilter, PipelineFilter, {
 
@@ -73,4 +83,12 @@ import { FailedDependencyException } from '@exceptions/failed-dependency.excepti
 
 	]
 
-}) export class CoreModule {}
+}) export class CoreModule implements NestModule {
+
+	public configure(consumer: MiddlewareConsumer) {
+
+		consumer.apply(HeaderMiddleware).forRoutes('*');
+
+	}
+
+}

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Req, UnauthorizedException, BadRequestException } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Req, UnauthorizedException, BadRequestException, ParseUUIDPipe } from '@nestjs/common';
 
 import { CreateUserDto } from '@user/dto/create-user.dto';
 import { CreateAuthDto } from './dto/create-auth.dto';
@@ -11,6 +11,7 @@ import { Attribute } from '@repo-types/attribute.type';
 
 import { UseGuards } from '@decorators/use-guard.decorator';
 import { PublicGuard } from '@decorators/public-guard.decorator';
+import { HeaderParam } from '@decorators/header-param.decorator';
 
 import { Request } from 'express';
 
@@ -34,7 +35,7 @@ import { Request } from 'express';
 
 	}
 
-	@UseGuards('auth') @Post('/login') public async login(@Req() req: Request, @Body() body: CreateAuthDto): Promise<{access_token: string, refresh_token: string}> {
+	@UseGuards('auth') @Post('/login') public async login(@Req() req: Request, @Body() body: CreateAuthDto, @HeaderParam('uuid', false, ParseUUIDPipe) uuid?: string): Promise<{access_token: string, refresh_token: string}> {
 
 		const access = req.user as string;
 
@@ -43,7 +44,7 @@ import { Request } from 'express';
 			access_token: access,
 			refresh_token: await this.authService.login(
 
-				body.email, body.password, req.headers['uuid'] as string | undefined
+				body.email, body.password, uuid
 
 			)
 
@@ -51,7 +52,7 @@ import { Request } from 'express';
 
 	}
 
-	@UseGuards('token') @Post('/refresh') public async refresh(@Req() req: Request, @Body() body: {refresh_token?: string}): Promise<{access_token: string, refresh_token: string}> {
+	@UseGuards('token') @Post('/refresh') public async refresh(@Req() req: Request, @Body() body: {refresh_token?: string}, @HeaderParam('uuid', false, ParseUUIDPipe) uuid?: string): Promise<{access_token: string, refresh_token: string}> {
 
 		const token = body.refresh_token;
 
@@ -62,7 +63,7 @@ import { Request } from 'express';
 			access_token: req.user as string,
 			refresh_token: await this.authService.refresh(
 
-				token, req.headers['uuid'] as string | undefined
+				token, uuid
 
 			)
 

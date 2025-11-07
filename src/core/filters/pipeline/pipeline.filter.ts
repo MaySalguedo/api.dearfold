@@ -66,7 +66,7 @@ import { FailedDependencyException } from '@exceptions/failed-dependency.excepti
 					result.detail = typeof responseMessage === 'object' && 'message' in responseMessage && Array.isArray(responseMessage.message)
 						? responseMessage.message : [
 
-							typeof responseMessage === 'string' ? responseMessage : JSON.stringify(responseMessage)
+							typeof responseMessage === 'string' ? responseMessage : responseMessage.message
 
 					];
 
