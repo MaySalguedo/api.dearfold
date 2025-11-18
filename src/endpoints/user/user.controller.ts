@@ -3,10 +3,12 @@ import { Controller, Get, Post, Body, Patch, Param, Delete, Req, UnauthorizedExc
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UserService } from './user.service';
-import { User } from './entities/user.entity';
+import { User } from '@user/entities/user.entity';
+import { Issued } from '@models/issued.model';
 
 import { UseGuards } from '@decorators/use-guard.decorator';
 import { PublicGuard } from '@decorators/public-guard.decorator';
+import { SignedUser } from '@decorators/signed-user.decorator';
 
 import { Request } from 'express';
 
@@ -26,9 +28,13 @@ import { Request } from 'express';
 
 	}
 
-	@Patch('/:id') public async update(@Req() req: Request, @Param('id') id: User['id'], @Body() dto: UpdateUserDto): Promise<void>{
+	@Patch('/:id') public async update(
 
-		const user: User & {iat: number, exp: number} = req.user as User & {iat: number, exp: number};
+		@SignedUser() user: User & Issued,
+		@Param('id') id: User['id'],
+		@Body() dto: UpdateUserDto
+
+	): Promise<void>{
 
 		if (user.id!==id && !user.admin) throw new UnauthorizedException('Only authorized accounts can update users.');
 
